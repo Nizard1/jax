@@ -116,11 +116,6 @@ class TypedJaxpr:
     assert len(literals) == len(jaxpr.constvars)
     assert len(in_avals) == len(jaxpr.invars)
 
-    # TODO TODO remove this
-    for l in literals:
-      try: print(l._progenitor_messages())
-      except: pass
-
     assert not any(isinstance(l, Tracer) for l in literals), literals
 
     if not skip_checks:
@@ -1284,8 +1279,7 @@ def check_jaxpr(jaxpr: Jaxpr):
   Raises `TypeError` if `jaxpr` is determined invalid. Returns `None` otherwise.
   """
   try:
-    with fresh_trace_state():
-      _check_jaxpr(jaxpr, [v.aval for v in jaxpr.invars])
+    _check_jaxpr(jaxpr, [v.aval for v in jaxpr.invars])
   except JaxprTypeError as e:
     if len(e.args) == 2:
       msg, eqn_idx = e.args

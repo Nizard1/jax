@@ -29,7 +29,7 @@
 # replica groups for collective operations.
 
 from collections import defaultdict
-from itertools import product
+import itertools as it
 import operator as op
 from typing import (Any, Callable, Dict, List, Optional, Sequence, Set, Tuple,
                     Type, Union)
@@ -37,7 +37,7 @@ from typing import (Any, Callable, Dict, List, Optional, Sequence, Set, Tuple,
 from absl import logging
 import numpy as onp
 
-from ..config import flags
+from ..config import config, flags
 from .. import core
 from .. import linear_util as lu
 from .. import lazy
@@ -164,7 +164,7 @@ def spec_to_indices(shape: Tuple[int, ...],
       logical_index += 1
   assert logical_index == len(shape) and not replication_factors
 
-  indices = list(product(*indices_per_mesh_axis))
+  indices = list(it.product(*indices_per_mesh_axis))
 
   # remove placeholder `None`s and trailing colons, then unwrap
   # single-element tuples
@@ -534,7 +534,11 @@ def parallel_callable(fun, backend, axis_name, axis_size, global_axis_size,
   sharded_avals = tuple(shard_aval(axis_size, aval) if m else aval
                         for m, aval in zip(mapped_invars, avals))
   with core.extend_axis_env(axis_name, axis_size):
-    jaxpr, out_avals, consts = pe.trace_to_jaxpr_final(fun, sharded_avals)
+    if config.read("jax_omnistaging"):
+      jaxpr, out_avals, consts = pe.trace_to_jaxpr_final(fun, sharded_avals)
+    else:
+      jaxpr, out_avals, consts = pe.partial_eval_to_jaxpr_final(fun, sharded_avals)
+  map(xla.prefetch, it.chain(consts, xla.jaxpr_literals(jaxpr)))
   jaxpr = xla.apply_outfeed_rewriter(jaxpr)
 
   # TODO(skye,mattjj): allow more collectives on multi-host as we test them, but

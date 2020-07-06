@@ -2204,6 +2204,7 @@ def associative_scan(fn, elems):
   return tree_unflatten(tree, scans)
 
 
+# TODO TODO switch _initial_style_jaxpr just to check flag, use partial eval
 # TODO(mattjj): remove backward compatibility shims for pre-omnistaging uses
 # Known issues:
 #  * compiled op-by-op versions are never cached
